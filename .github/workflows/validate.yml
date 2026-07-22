@@ -1,0 +1,29 @@
+name: Validate evaluation submissions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Download official suite catalog
+        run: mkdir -p .cache && curl --fail --location --silent --show-error https://github.com/SafeAI4Humanity/ai4h-test-suites/releases/latest/download/catalog.json --output .cache/catalog.json
+      - run: node scripts/validate-submissions.mjs --catalog .cache/catalog.json
+      - run: npm test
+      - run: node scripts/build-results.mjs --catalog .cache/catalog.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-evaluation-data
+          path: generated/

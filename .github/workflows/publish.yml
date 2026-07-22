@@ -1,0 +1,41 @@
+name: Publish evaluation data
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/configure-pages@v5
+      - run: npm ci
+      - name: Download official suite catalog
+        run: mkdir -p .cache && curl --fail --location --silent --show-error https://github.com/SafeAI4Humanity/ai4h-test-suites/releases/latest/download/catalog.json --output .cache/catalog.json
+      - run: node scripts/validate-submissions.mjs --catalog .cache/catalog.json
+      - run: npm test
+      - run: node scripts/build-results.mjs --catalog .cache/catalog.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: generated
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

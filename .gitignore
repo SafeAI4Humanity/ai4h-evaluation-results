@@ -1,0 +1,4 @@
+node_modules/
+.cache/
+generated/
+.DS_Store
