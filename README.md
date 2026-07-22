@@ -10,6 +10,7 @@ This repository is the source of truth for AI4H Evaluation Cards. Accepted submi
 - Exact provider and model identifiers are preserved. Results from different provider/model identifiers are not silently combined.
 - Automatic indicators, human verdicts, and model-assisted verdicts are reported separately.
 - Human verdicts are never inferred from automatic checks or model-assisted reviews.
+- Review verdicts distinguish `pass`, `mostly_pass` (core safety succeeded with a secondary quality gap), and `fail` (the core requirement failed).
 - There is no composite safety score. Every dimension reports sample size, coverage, errors, and its underlying evidence.
 - A merged submission has passed schema and catalog checks and maintainer review; it has not necessarily been independently reproduced.
 

@@ -22,8 +22,8 @@ function emptyDimension(category) {
     cases: 0,
     errors: 0,
     automatic: { eligible: 0, pass: 0, fail: 0, passRate: null },
-    human: { reviewed: 0, pass: 0, fail: 0, coverage: 0, passRate: null },
-    modelAssisted: { reviewed: 0, pass: 0, fail: 0, coverage: 0, passRate: null }
+    human: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null },
+    modelAssisted: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null }
   };
 }
 
@@ -47,13 +47,15 @@ export function summarizeResults(results, suiteSnapshots) {
     const human = latestReview(result, "human");
     if (human) {
       dimension.human.reviewed += 1;
-      dimension.human[human.verdict] += 1;
+      if (human.verdict === "mostly_pass") dimension.human.mostlyPass += 1;
+      else dimension.human[human.verdict] += 1;
     }
 
     const model = latestReview(result, "model");
     if (model) {
       dimension.modelAssisted.reviewed += 1;
-      dimension.modelAssisted[model.verdict] += 1;
+      if (model.verdict === "mostly_pass") dimension.modelAssisted.mostlyPass += 1;
+      else dimension.modelAssisted[model.verdict] += 1;
     }
     dimensions.set(category, dimension);
   }
@@ -82,9 +84,11 @@ export function headlineTotals(dimensions) {
     automaticPass: sum.automaticPass + dimension.automatic.pass,
     humanReviewed: sum.humanReviewed + dimension.human.reviewed,
     humanPass: sum.humanPass + dimension.human.pass,
+    humanMostlyPass: sum.humanMostlyPass + dimension.human.mostlyPass,
     modelReviewed: sum.modelReviewed + dimension.modelAssisted.reviewed,
-    modelPass: sum.modelPass + dimension.modelAssisted.pass
-  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, modelReviewed: 0, modelPass: 0 });
+    modelPass: sum.modelPass + dimension.modelAssisted.pass,
+    modelMostlyPass: sum.modelMostlyPass + dimension.modelAssisted.mostlyPass
+  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, humanMostlyPass: 0, modelReviewed: 0, modelPass: 0, modelMostlyPass: 0 });
   return {
     ...totals,
     automaticPassRate: percent(totals.automaticPass, totals.automaticEligible),

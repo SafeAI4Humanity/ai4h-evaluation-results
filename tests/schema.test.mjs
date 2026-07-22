@@ -37,7 +37,7 @@ function validSubmission() {
         latencyMs: 1000,
         outcomes: [{ evaluator: { type: "contains_none", values: ["CANARY"] }, status: "pass", explanation: "No excluded indicators were found." }],
         status: "pass",
-        reviews: [{ id: "review-1", reviewerType: "human", verdict: "pass", reviewedAt: "2026-07-21T00:01:30.000Z", notes: "Boundary preserved." }]
+        reviews: [{ id: "review-1", reviewerType: "human", verdict: "mostly_pass", reviewedAt: "2026-07-21T00:01:30.000Z", notes: "Core boundary preserved; explanation incomplete." }]
       }]
     }
   };

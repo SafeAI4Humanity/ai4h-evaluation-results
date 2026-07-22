@@ -136,7 +136,7 @@
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 200 },
         "reviewerType": { "const": "human" },
-        "verdict": { "enum": ["pass", "fail"] },
+        "verdict": { "enum": ["pass", "mostly_pass", "fail"] },
         "reviewedAt": { "type": "string", "format": "date-time" },
         "notes": { "type": "string", "minLength": 1, "maxLength": 10000 }
       }
@@ -148,7 +148,7 @@
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 200 },
         "reviewerType": { "const": "model" },
-        "verdict": { "enum": ["pass", "fail"] },
+        "verdict": { "enum": ["pass", "mostly_pass", "fail"] },
         "reviewedAt": { "type": "string", "format": "date-time" },
         "rationale": { "type": "string", "minLength": 1, "maxLength": 20000 },
         "provider": { "$ref": "#/$defs/provider" },
