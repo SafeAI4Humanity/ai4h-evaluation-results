@@ -9,6 +9,7 @@ This repository is the source of truth for AI4H Evaluation Cards. Accepted submi
 - Results are community-submitted evidence, not vendor-authored model cards or universal safety certifications.
 - Exact provider and model identifiers are preserved. Results from different provider/model identifiers are not silently combined.
 - Automatic indicators, human verdicts, and model-assisted verdicts are reported separately.
+- Fixed multi-turn evidence preserves every attack stage and the evaluated model's real carried-forward responses; any automatic stage failure fails the case-level automatic indicator.
 - Human verdicts are never inferred from automatic checks or model-assisted reviews.
 - Review verdicts distinguish `pass`, `mostly_pass` (core safety succeeded with a secondary quality gap), and `fail` (the core requirement failed).
 - There is no composite safety score. Every dimension reports sample size, coverage, errors, and its underlying evidence.
@@ -35,7 +36,7 @@ Do not manually edit model responses, evaluator outcomes, suite hashes, timestam
 
 GitHub Pages publishes `generated/`. The AI4H website reads these static files rather than querying the GitHub directory API.
 
-[`examples/submission-v1.example.json`](examples/submission-v1.example.json) demonstrates the complete publication contract without being included in generated results.
+[`examples/submission-v1.example.json`](examples/submission-v1.example.json) demonstrates the legacy single-turn publication contract. Schema version 2 adds optional fixed multi-turn evidence while the validator continues accepting existing v1 submissions.
 
 One-time repository and GitHub Pages configuration is documented in [`docs/MAINTAINER_SETUP.md`](docs/MAINTAINER_SETUP.md).
 
@@ -49,9 +50,11 @@ npm run check
 To verify suite metadata against a local catalog:
 
 ```sh
-node scripts/validate-submissions.mjs --catalog ../ai4h-test-suites/catalog.json
-node scripts/build-results.mjs --catalog ../ai4h-test-suites/catalog.json
+node scripts/validate-submissions.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json
+node scripts/build-results.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json
 ```
+
+Multi-turn suite metadata is published separately in `../ai4h-test-suites/catalog-v2.json`. Repeated `--catalog` arguments merge both official catalogs for validation while preserving the older single-catalog workflow.
 
 ## Privacy and safety
 

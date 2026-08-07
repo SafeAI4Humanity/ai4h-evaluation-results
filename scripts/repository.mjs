@@ -34,10 +34,27 @@ async function jsonFiles(directory) {
 }
 
 export async function createSubmissionValidator(root = repositoryRoot) {
-  const schema = JSON.parse(await readFile(join(root, "schema", "submission-v1.schema.json"), "utf8"));
+  const v1Schema = JSON.parse(await readFile(join(root, "schema", "submission-v1.schema.json"), "utf8"));
+  const v2Schema = JSON.parse(await readFile(join(root, "schema", "submission-v2.schema.json"), "utf8"));
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
-  return ajv.compile(schema);
+  ajv.addSchema(v1Schema);
+  const validators = new Map([
+    [1, ajv.getSchema(v1Schema.$id)],
+    [2, ajv.compile(v2Schema)]
+  ]);
+  const validate = (submission) => {
+    const selected = validators.get(submission?.schemaVersion);
+    if (!selected) {
+      validate.errors = [{ instancePath: "/schemaVersion", message: "must be a supported submission schema version (1 or 2)" }];
+      return false;
+    }
+    const valid = selected(submission);
+    validate.errors = selected.errors;
+    return valid;
+  };
+  validate.errors = null;
+  return validate;
 }
 
 export async function validateSubmissionObject(submission, root = repositoryRoot) {
@@ -91,6 +108,16 @@ function semanticErrors(submission, catalog) {
     if (snapshot && snapshot.contentHash !== result.suiteHash) errors.push(`result ${result.id} does not match suite snapshot ${suiteKey}`);
     if (!targets.has(`${result.target.provider}\u0000${result.target.model}`)) errors.push(`result ${result.id} references a model absent from run.targets`);
     if (new Date(result.completedAt) < new Date(result.startedAt)) errors.push(`result ${result.id} completes before it starts`);
+    if (result.executionType === "multi_turn") {
+      const turnNumbers = result.turnResults.map((turn) => turn.turnNumber);
+      const expected = result.turnResults.map((_, index) => index + 1);
+      if (JSON.stringify(turnNumbers) !== JSON.stringify(expected)) errors.push(`result ${result.id} has non-sequential turn numbers`);
+      for (const turn of result.turnResults) {
+        if (new Date(turn.completedAt) < new Date(turn.startedAt)) errors.push(`result ${result.id} turn ${turn.turnId} completes before it starts`);
+      }
+      const firstFailure = result.turnResults.find((turn) => turn.status === "fail")?.turnNumber;
+      if (result.firstFailedTurn !== undefined && result.firstFailedTurn !== firstFailure) errors.push(`result ${result.id} firstFailedTurn does not match its turn evidence`);
+    }
   }
 
   if (new Date(submission.run.completedAt) < new Date(submission.run.createdAt)) errors.push("run completes before it starts");
@@ -98,9 +125,10 @@ function semanticErrors(submission, catalog) {
   return errors;
 }
 
-export async function validateRepository({ root = repositoryRoot, catalogPath } = {}) {
+export async function validateRepository({ root = repositoryRoot, catalogPath, catalogPaths = catalogPath ? [catalogPath] : [] } = {}) {
   const validate = await createSubmissionValidator(root);
-  const catalog = catalogPath ? JSON.parse(await readFile(resolve(catalogPath), "utf8")) : null;
+  const catalogs = await Promise.all(catalogPaths.map(async (path) => JSON.parse(await readFile(resolve(path), "utf8"))));
+  const catalog = catalogs.length ? { suites: catalogs.flatMap((item) => item.suites ?? []) } : null;
   const files = await jsonFiles(join(root, "submissions"));
   const submissions = [];
   const failures = [];
@@ -144,8 +172,16 @@ export async function validateRepository({ root = repositoryRoot, catalogPath } 
 }
 
 export function catalogArgument(args = process.argv.slice(2)) {
-  const index = args.indexOf("--catalog");
-  if (index < 0) return undefined;
-  if (!args[index + 1]) throw new Error("--catalog requires a file path");
-  return args[index + 1];
+  return catalogArguments(args)[0];
+}
+
+export function catalogArguments(args = process.argv.slice(2)) {
+  const paths = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== "--catalog") continue;
+    if (!args[index + 1]) throw new Error("--catalog requires a file path");
+    paths.push(args[index + 1]);
+    index += 1;
+  }
+  return paths;
 }

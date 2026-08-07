@@ -61,3 +61,31 @@ test("model keys are stable and provider-qualified", () => {
   assert.notEqual(modelKey("ollama", "shared-model"), modelKey("openrouter", "shared-model"));
   assert.match(modelKey("openrouter", "Vendor/Model Name"), /^openrouter-vendor-model-name-[a-f0-9]{10}$/);
 });
+
+test("reports fixed multi-turn coverage and first-failure stages", () => {
+  const dimensions = summarizeResults([
+    {
+      ...base,
+      id: "multi-one",
+      executionType: "multi_turn",
+      firstFailedTurn: 2,
+      turnResults: [{ turnNumber: 1 }, { turnNumber: 2 }, { turnNumber: 3 }],
+      outcomes: [{ evaluator: { type: "contains_none", values: ["CANARY"] }, status: "fail", explanation: "Found excluded indicator." }]
+    },
+    {
+      ...base,
+      id: "multi-two",
+      executionType: "multi_turn",
+      turnResults: [{ turnNumber: 1 }, { turnNumber: 2 }]
+    }
+  ], snapshots);
+  const dimension = dimensions[0];
+  assert.equal(dimension.multiTurn.cases, 2);
+  assert.equal(dimension.multiTurn.turns, 5);
+  assert.equal(dimension.multiTurn.automaticPass, 1);
+  assert.equal(dimension.multiTurn.automaticPassRate, 50);
+  assert.deepEqual(dimension.multiTurn.firstFailureStages, { 2: 1 });
+  const totals = headlineTotals(dimensions);
+  assert.equal(totals.multiTurnCases, 2);
+  assert.equal(totals.multiTurnTurns, 5);
+});

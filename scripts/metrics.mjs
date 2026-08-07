@@ -23,7 +23,8 @@ function emptyDimension(category) {
     errors: 0,
     automatic: { eligible: 0, pass: 0, fail: 0, passRate: null },
     human: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null },
-    modelAssisted: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null }
+    modelAssisted: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null },
+    multiTurn: { cases: 0, turns: 0, automaticPass: 0, automaticPassRate: null, firstFailureStages: {} }
   };
 }
 
@@ -42,6 +43,15 @@ export function summarizeResults(results, suiteSnapshots) {
       dimension.automatic.eligible += 1;
       if (automatic.every((outcome) => outcome.status === "pass")) dimension.automatic.pass += 1;
       else dimension.automatic.fail += 1;
+    }
+
+    if (result.executionType === "multi_turn" && result.turnResults?.length) {
+      dimension.multiTurn.cases += 1;
+      dimension.multiTurn.turns += result.turnResults.length;
+      if (automatic.length && automatic.every((outcome) => outcome.status === "pass")) dimension.multiTurn.automaticPass += 1;
+      if (result.firstFailedTurn !== undefined) {
+        dimension.multiTurn.firstFailureStages[result.firstFailedTurn] = (dimension.multiTurn.firstFailureStages[result.firstFailedTurn] ?? 0) + 1;
+      }
     }
 
     const human = latestReview(result, "human");
@@ -72,6 +82,10 @@ export function summarizeResults(results, suiteSnapshots) {
       ...dimension.modelAssisted,
       coverage: percent(dimension.modelAssisted.reviewed, dimension.cases),
       passRate: percent(dimension.modelAssisted.pass, dimension.modelAssisted.reviewed)
+    },
+    multiTurn: {
+      ...dimension.multiTurn,
+      automaticPassRate: percent(dimension.multiTurn.automaticPass, dimension.multiTurn.cases)
     }
   }));
 }
@@ -87,14 +101,18 @@ export function headlineTotals(dimensions) {
     humanMostlyPass: sum.humanMostlyPass + dimension.human.mostlyPass,
     modelReviewed: sum.modelReviewed + dimension.modelAssisted.reviewed,
     modelPass: sum.modelPass + dimension.modelAssisted.pass,
-    modelMostlyPass: sum.modelMostlyPass + dimension.modelAssisted.mostlyPass
-  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, humanMostlyPass: 0, modelReviewed: 0, modelPass: 0, modelMostlyPass: 0 });
+    modelMostlyPass: sum.modelMostlyPass + dimension.modelAssisted.mostlyPass,
+    multiTurnCases: sum.multiTurnCases + dimension.multiTurn.cases,
+    multiTurnTurns: sum.multiTurnTurns + dimension.multiTurn.turns,
+    multiTurnAutomaticPass: sum.multiTurnAutomaticPass + dimension.multiTurn.automaticPass
+  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, humanMostlyPass: 0, modelReviewed: 0, modelPass: 0, modelMostlyPass: 0, multiTurnCases: 0, multiTurnTurns: 0, multiTurnAutomaticPass: 0 });
   return {
     ...totals,
     automaticPassRate: percent(totals.automaticPass, totals.automaticEligible),
     humanCoverage: percent(totals.humanReviewed, totals.cases),
     humanPassRate: percent(totals.humanPass, totals.humanReviewed),
     modelCoverage: percent(totals.modelReviewed, totals.cases),
-    modelPassRate: percent(totals.modelPass, totals.modelReviewed)
+    modelPassRate: percent(totals.modelPass, totals.modelReviewed),
+    multiTurnAutomaticPassRate: percent(totals.multiTurnAutomaticPass, totals.multiTurnCases)
   };
 }

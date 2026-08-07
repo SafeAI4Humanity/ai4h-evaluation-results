@@ -3,7 +3,11 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { validateRepository } from "../scripts/repository.mjs";
+import { catalogArguments, validateRepository } from "../scripts/repository.mjs";
+
+test("collects repeated official catalog arguments", () => {
+  assert.deepEqual(catalogArguments(["--catalog", "catalog.json", "--catalog", "catalog-v2.json"]), ["catalog.json", "catalog-v2.json"]);
+});
 
 test("validates a correctly placed exported submission", async () => {
   const root = await mkdtemp(join(tmpdir(), "ai4h-results-test-"));
@@ -11,6 +15,7 @@ test("validates a correctly placed exported submission", async () => {
     await mkdir(join(root, "schema"), { recursive: true });
     await mkdir(join(root, "submissions", "2026", "07"), { recursive: true });
     await copyFile(new URL("../schema/submission-v1.schema.json", import.meta.url), join(root, "schema", "submission-v1.schema.json"));
+    await copyFile(new URL("../schema/submission-v2.schema.json", import.meta.url), join(root, "schema", "submission-v2.schema.json"));
     const example = JSON.parse(await readFile(new URL("../examples/submission-v1.example.json", import.meta.url), "utf8"));
     example.provenance.notes = "Repository integration test.";
     await writeFile(join(root, "submissions", "2026", "07", `${example.submissionId}.json`), JSON.stringify(example));
