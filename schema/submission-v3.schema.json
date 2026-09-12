@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-4-h.org/schemas/evaluation-submission-v3.json",
+  "title": "AI4H Evaluation Submission with Agent Tool-use Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "submissionId", "submittedAt", "organization", "app", "consent", "provenance", "run"],
+  "properties": {
+    "schemaVersion": { "const": 3 },
+    "submissionId": { "type": "string", "format": "uuid" },
+    "submittedAt": { "type": "string", "format": "date-time" },
+    "organization": { "const": "Safe AI for Humanity Foundation" },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "AI4H Eval Lab" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicRelease", "includeRawResponses", "includeReviews"],
+      "properties": {
+        "publicRelease": { "const": true },
+        "includeRawResponses": { "const": true },
+        "includeReviews": { "const": true }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "submitter": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "notes": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "run": { "$ref": "#/$defs/run" }
+  },
+  "$defs": {
+    "evaluator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "contains_any" },
+            "values": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "caseSensitive": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "contains_none" },
+            "values": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "caseSensitive": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "pattern"],
+          "properties": {
+            "type": { "const": "regex" },
+            "pattern": { "type": "string" },
+            "flags": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "non_empty" },
+            "minimumCharacters": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "valid_json" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "forbidden_tool_calls" },
+            "values": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "forbidden_tool_arguments" },
+            "values": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "scope_adherence" },
+            "values": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "rubric"],
+          "properties": {
+            "type": { "const": "human_review" },
+            "rubric": { "type": "string", "minLength": 10, "maxLength": 1500 }
+          }
+        }
+      ]
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluator", "status", "explanation"],
+      "properties": {
+        "evaluator": { "$ref": "#/$defs/evaluator" },
+        "status": { "enum": ["pass", "fail", "review"] },
+        "explanation": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "turnResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["turnId", "turnTitle", "turnNumber", "prompt", "response", "startedAt", "completedAt", "latencyMs", "outcomes", "status"],
+      "properties": {
+        "turnId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+        "turnTitle": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "turnNumber": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 20000 },
+        "response": { "type": "string", "maxLength": 200000 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "latencyMs": { "type": "integer", "minimum": 0 },
+        "promptTokens": { "type": "integer", "minimum": 0 },
+        "completionTokens": { "type": "integer", "minimum": 0 },
+        "outcomes": { "type": "array", "items": { "$ref": "#/$defs/outcome" } },
+        "status": { "enum": ["pass", "fail", "review", "error"] },
+        "error": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "toolResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "text"],
+            "properties": {
+              "type": { "const": "text" },
+              "text": { "type": "string", "minLength": 1, "maxLength": 20000 }
+            }
+          }
+        },
+        "structuredContent": { "type": "object" },
+        "isError": { "type": "boolean" }
+      }
+    },
+    "toolCallRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "arguments"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "arguments": { "type": "object" }
+      }
+    },
+    "toolResultRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["toolCallId", "name", "response"],
+      "properties": {
+        "toolCallId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "response": { "$ref": "#/$defs/toolResponse" }
+      }
+    },
+    "agentVariantResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variant", "startedAt", "completedAt", "latencyMs", "finalResponse", "assistantMessages", "toolCalls", "toolResults", "steps", "status"],
+      "properties": {
+        "variant": { "enum": ["clean", "poisoned"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "latencyMs": { "type": "integer", "minimum": 0 },
+        "finalResponse": { "type": "string", "maxLength": 200000 },
+        "assistantMessages": { "type": "array", "items": { "type": "string", "maxLength": 200000 } },
+        "promptTokens": { "type": "integer", "minimum": 0 },
+        "completionTokens": { "type": "integer", "minimum": 0 },
+        "toolCalls": { "type": "array", "items": { "$ref": "#/$defs/toolCallRecord" } },
+        "toolResults": { "type": "array", "items": { "$ref": "#/$defs/toolResultRecord" } },
+        "steps": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "status": { "enum": ["completed", "max_steps", "error"] },
+        "error": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "agentEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "authorizedScope", "stopConditions", "prohibitedActions", "protectedCanaries", "clean", "poisoned", "comparison"],
+      "properties": {
+        "task": { "type": "string", "minLength": 10, "maxLength": 4000 },
+        "authorizedScope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["targets", "actions", "boundary"],
+          "properties": {
+            "targets": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+            "actions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+            "boundary": { "type": "string", "minLength": 10, "maxLength": 1000 }
+          }
+        },
+        "stopConditions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 5, "maxLength": 500 } },
+        "prohibitedActions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 3, "maxLength": 300 } },
+        "protectedCanaries": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+        "clean": { "$ref": "#/$defs/agentVariantResult" },
+        "poisoned": { "$ref": "#/$defs/agentVariantResult" },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cleanUtilityPass", "cleanSecurityPass", "poisonedUtilityPass", "poisonedSecurityPass", "evaluable", "resilient", "attackSucceeded"],
+          "properties": {
+            "cleanUtilityPass": { "type": "boolean" },
+            "cleanSecurityPass": { "type": "boolean" },
+            "poisonedUtilityPass": { "type": "boolean" },
+            "poisonedSecurityPass": { "type": "boolean" },
+            "evaluable": { "type": "boolean" },
+            "resilient": { "type": "boolean" },
+            "attackSucceeded": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "suiteId", "suiteVersion", "suiteHash", "caseId", "caseTitle", "caseMessages", "target", "response", "startedAt", "completedAt", "latencyMs", "outcomes", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "suiteId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+        "suiteVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "suiteHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "caseId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$" },
+        "caseTitle": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "caseMessages": { "type": "array", "minItems": 1, "items": { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/message" } },
+        "target": { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/target" },
+        "response": { "type": "string", "maxLength": 200000 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "latencyMs": { "type": "integer", "minimum": 0 },
+        "promptTokens": { "type": "integer", "minimum": 0 },
+        "completionTokens": { "type": "integer", "minimum": 0 },
+        "outcomes": { "type": "array", "items": { "$ref": "#/$defs/outcome" } },
+        "status": { "enum": ["pass", "fail", "review", "error"] },
+        "error": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "reviews": {
+          "type": "array",
+          "items": { "oneOf": [
+            { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/humanReview" },
+            { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/modelReview" }
+          ] }
+        },
+        "executionType": { "enum": ["single_turn", "multi_turn", "agent_tool"] },
+        "outcomePolicy": { "const": "fail_on_any_turn" },
+        "turnResults": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "$ref": "#/$defs/turnResult" } },
+        "firstFailedTurn": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "agentEvidence": { "$ref": "#/$defs/agentEvidence" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "executionType": { "const": "multi_turn" } }, "required": ["executionType"] },
+          "then": {
+            "properties": { "turnResults": true, "outcomePolicy": true },
+            "required": ["turnResults", "outcomePolicy"]
+          }
+        },
+        {
+          "if": { "properties": { "executionType": { "const": "agent_tool" } }, "required": ["executionType"] },
+          "then": {
+            "properties": { "agentEvidence": true },
+            "required": ["agentEvidence"]
+          }
+        },
+        {
+          "if": { "properties": { "executionType": { "const": "agent_tool" } }, "required": ["executionType"] },
+          "then": { "properties": { "turnResults": false, "outcomePolicy": false, "firstFailedTurn": false } }
+        },
+        {
+          "if": { "properties": { "agentEvidence": true }, "required": ["agentEvidence"] },
+          "then": { "properties": { "executionType": { "const": "agent_tool" } }, "required": ["executionType"] }
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "createdAt", "completedAt", "status", "suiteSnapshots", "targets", "results"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "status": { "const": "completed" },
+        "suiteSnapshots": { "type": "array", "minItems": 1, "items": { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/suiteSnapshot" } },
+        "targets": { "type": "array", "minItems": 1, "items": { "$ref": "https://ai-4-h.org/schemas/evaluation-submission-v1.json#/$defs/target" } },
+        "results": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/result" } }
+      }
+    }
+  }
+}

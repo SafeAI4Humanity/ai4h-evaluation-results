@@ -35,9 +35,12 @@ jobs:
           if ! curl --fail --location --silent --show-error https://github.com/SafeAI4Humanity/ai4h-test-suites/releases/latest/download/catalog-v2.json --output .cache/catalog-v2.json; then
             printf '{"schemaVersion":2,"catalogVersion":"unavailable","publishedAt":"1970-01-01T00:00:00Z","suites":[]}' > .cache/catalog-v2.json
           fi
-      - run: node scripts/validate-submissions.mjs --catalog .cache/catalog.json --catalog .cache/catalog-v2.json
+          if ! curl --fail --location --silent --show-error https://github.com/SafeAI4Humanity/ai4h-test-suites/releases/latest/download/catalog-v3.json --output .cache/catalog-v3.json; then
+            printf '{"schemaVersion":3,"catalogVersion":"unavailable","publishedAt":"1970-01-01T00:00:00Z","suites":[]}' > .cache/catalog-v3.json
+          fi
+      - run: node scripts/validate-submissions.mjs --catalog .cache/catalog.json --catalog .cache/catalog-v2.json --catalog .cache/catalog-v3.json
       - run: npm test
-      - run: node scripts/build-results.mjs --catalog .cache/catalog.json --catalog .cache/catalog-v2.json
+      - run: node scripts/build-results.mjs --catalog .cache/catalog.json --catalog .cache/catalog-v2.json --catalog .cache/catalog-v3.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: generated
