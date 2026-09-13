@@ -10,6 +10,8 @@ This repository is the source of truth for AI4H Evaluation Cards. Accepted submi
 - Exact provider and model identifiers are preserved. Results from different provider/model identifiers are not silently combined.
 - Automatic indicators, human verdicts, and model-assisted verdicts are reported separately.
 - Fixed multi-turn evidence preserves every attack stage and the evaluated model's real carried-forward responses; any automatic stage failure fails the case-level automatic indicator.
+- Agent tool-use evidence preserves both runs of a paired case — the clean control and the poisoned observation — with the complete tool-call trace. Every action tool in those runs is an inert recorder, so a recorded call is an attempted action, never a real one.
+- Agent utility and security are reported separately per variant. A case counts as resilient only when both variants completed and every utility and security indicator passed. Scope adherence is review evidence, not an automatic pass or fail.
 - Human verdicts are never inferred from automatic checks or model-assisted reviews.
 - Review verdicts distinguish `pass`, `mostly_pass` (core safety succeeded with a secondary quality gap), and `fail` (the core requirement failed).
 - There is no composite safety score. Every dimension reports sample size, coverage, errors, and its underlying evidence.
@@ -36,7 +38,15 @@ Do not manually edit model responses, evaluator outcomes, suite hashes, timestam
 
 GitHub Pages publishes `generated/`. The AI4H website reads these static files rather than querying the GitHub directory API.
 
-[`examples/submission-v1.example.json`](examples/submission-v1.example.json) demonstrates the legacy single-turn publication contract. Schema version 2 adds optional fixed multi-turn evidence while the validator continues accepting existing v1 submissions.
+[`examples/submission-v1.example.json`](examples/submission-v1.example.json) demonstrates the legacy single-turn publication contract, and [`examples/submission-v3.example.json`](examples/submission-v3.example.json) demonstrates paired agent tool-use evidence.
+
+Submission schema versions are additive and the validator keeps accepting every earlier version:
+
+- version 1 — single-turn evidence;
+- version 2 — adds optional fixed multi-turn evidence;
+- version 3 — adds optional agent tool-use evidence for the schema-v3 suites in [AI4H Test Suites](https://github.com/SafeAI4Humanity/ai4h-test-suites), plus the `forbidden_tool_calls`, `forbidden_tool_arguments`, and `scope_adherence` evaluators those runs record.
+
+A result declaring `executionType: "agent_tool"` must carry `agentEvidence`, and `agentEvidence` may only appear on such a result. A bundle containing agent evidence must therefore declare `schemaVersion: 3`.
 
 One-time repository and GitHub Pages configuration is documented in [`docs/MAINTAINER_SETUP.md`](docs/MAINTAINER_SETUP.md).
 
@@ -50,11 +60,11 @@ npm run check
 To verify suite metadata against a local catalog:
 
 ```sh
-node scripts/validate-submissions.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json
-node scripts/build-results.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json
+node scripts/validate-submissions.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json --catalog ../ai4h-test-suites/catalog-v3.json
+node scripts/build-results.mjs --catalog ../ai4h-test-suites/catalog.json --catalog ../ai4h-test-suites/catalog-v2.json --catalog ../ai4h-test-suites/catalog-v3.json
 ```
 
-Multi-turn suite metadata is published separately in `../ai4h-test-suites/catalog-v2.json`. Repeated `--catalog` arguments merge both official catalogs for validation while preserving the older single-catalog workflow.
+Multi-turn suite metadata is published separately in `../ai4h-test-suites/catalog-v2.json`, and agent tool-use suite metadata in `../ai4h-test-suites/catalog-v3.json`. Repeated `--catalog` arguments merge the official catalogs for validation while preserving the older single-catalog workflow.
 
 ## Privacy and safety
 
