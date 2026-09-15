@@ -31,7 +31,7 @@ function emptyDimension(category) {
     automatic: { eligible: 0, pass: 0, fail: 0, passRate: null },
     human: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null },
     modelAssisted: { reviewed: 0, pass: 0, mostlyPass: 0, fail: 0, coverage: 0, passRate: null },
-    multiTurn: { cases: 0, turns: 0, automaticPass: 0, automaticPassRate: null, firstFailureStages: {} },
+    multiTurn: { cases: 0, turns: 0, automaticEligible: 0, automaticPass: 0, automaticPassRate: null, firstFailureStages: {} },
     agent: {
       cases: 0,
       evaluable: 0,
@@ -81,7 +81,10 @@ export function summarizeResults(results, suiteSnapshots) {
     if (result.executionType === "multi_turn" && result.turnResults?.length) {
       dimension.multiTurn.cases += 1;
       dimension.multiTurn.turns += result.turnResults.length;
-      if (automatic.length && automatic.every((outcome) => outcome.status === "pass")) dimension.multiTurn.automaticPass += 1;
+      if (result.status !== "error" && automatic.length) {
+        dimension.multiTurn.automaticEligible += 1;
+        if (automatic.every((outcome) => outcome.status === "pass")) dimension.multiTurn.automaticPass += 1;
+      }
       if (result.firstFailedTurn !== undefined) {
         dimension.multiTurn.firstFailureStages[result.firstFailedTurn] = (dimension.multiTurn.firstFailureStages[result.firstFailedTurn] ?? 0) + 1;
       }
@@ -118,7 +121,7 @@ export function summarizeResults(results, suiteSnapshots) {
     },
     multiTurn: {
       ...dimension.multiTurn,
-      automaticPassRate: percent(dimension.multiTurn.automaticPass, dimension.multiTurn.cases)
+      automaticPassRate: percent(dimension.multiTurn.automaticPass, dimension.multiTurn.automaticEligible)
     },
     agent: {
       ...dimension.agent,
@@ -142,13 +145,14 @@ export function headlineTotals(dimensions) {
     modelMostlyPass: sum.modelMostlyPass + dimension.modelAssisted.mostlyPass,
     multiTurnCases: sum.multiTurnCases + dimension.multiTurn.cases,
     multiTurnTurns: sum.multiTurnTurns + dimension.multiTurn.turns,
+    multiTurnAutomaticEligible: sum.multiTurnAutomaticEligible + dimension.multiTurn.automaticEligible,
     multiTurnAutomaticPass: sum.multiTurnAutomaticPass + dimension.multiTurn.automaticPass,
     agentCases: sum.agentCases + dimension.agent.cases,
     agentEvaluable: sum.agentEvaluable + dimension.agent.evaluable,
     agentResilient: sum.agentResilient + dimension.agent.resilient,
     agentAttacksSucceeded: sum.agentAttacksSucceeded + dimension.agent.attacksSucceeded,
     agentProhibitedToolCalls: sum.agentProhibitedToolCalls + dimension.agent.prohibitedToolCalls
-  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, humanMostlyPass: 0, modelReviewed: 0, modelPass: 0, modelMostlyPass: 0, multiTurnCases: 0, multiTurnTurns: 0, multiTurnAutomaticPass: 0, agentCases: 0, agentEvaluable: 0, agentResilient: 0, agentAttacksSucceeded: 0, agentProhibitedToolCalls: 0 });
+  }), { cases: 0, errors: 0, automaticEligible: 0, automaticPass: 0, humanReviewed: 0, humanPass: 0, humanMostlyPass: 0, modelReviewed: 0, modelPass: 0, modelMostlyPass: 0, multiTurnCases: 0, multiTurnTurns: 0, multiTurnAutomaticEligible: 0, multiTurnAutomaticPass: 0, agentCases: 0, agentEvaluable: 0, agentResilient: 0, agentAttacksSucceeded: 0, agentProhibitedToolCalls: 0 });
   return {
     ...totals,
     automaticPassRate: percent(totals.automaticPass, totals.automaticEligible),
@@ -156,7 +160,7 @@ export function headlineTotals(dimensions) {
     humanPassRate: percent(totals.humanPass, totals.humanReviewed),
     modelCoverage: percent(totals.modelReviewed, totals.cases),
     modelPassRate: percent(totals.modelPass, totals.modelReviewed),
-    multiTurnAutomaticPassRate: percent(totals.multiTurnAutomaticPass, totals.multiTurnCases),
+    multiTurnAutomaticPassRate: percent(totals.multiTurnAutomaticPass, totals.multiTurnAutomaticEligible),
     agentResilienceRate: percent(totals.agentResilient, totals.agentEvaluable),
     agentAttackSuccessRate: percent(totals.agentAttacksSucceeded, totals.agentEvaluable)
   };
